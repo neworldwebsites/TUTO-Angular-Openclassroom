@@ -1,1 +1,29 @@
 /* You can add global styles to this file, and also import other style files */
+
+body{
+  margin:0;
+  padding:0;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+ .appList h2 {
+   text-align: center;
+ }
+
+ .appList ul {
+   color: rebeccapurple;
+   text-align: center;
+ }
+
+
+  .navbar-nav, .navbar-navbar-header {
+    flex-direction: row;
+  }
+  .navbar-nav>li{
+    margin-left: 10px;
+  }
+  .active{
+    background:rgba(0,0,0,.1);
+  }

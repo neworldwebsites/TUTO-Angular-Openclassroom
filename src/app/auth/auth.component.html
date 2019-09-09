@@ -1,0 +1,11 @@
+<h3>Authentification</h3>
+
+<button class="btn btn-sm btn-outline-info"
+*ngIf="!authStatus"
+(click)="onSignIn()">
+	Se Connecter</button>
+
+<button class="btn btn-sm btn-outline-warning"
+*ngIf="authStatus"
+(click)="onSignOut()">
+	Se Deconnecter</button>

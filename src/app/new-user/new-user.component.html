@@ -1,0 +1,72 @@
+<div class="col-sm-8 col-sm-offset-2">
+
+	<form [formGroup]="userForm" (ngSubmit)="onSubmitForm()">
+
+
+		<div class="form-group">
+			<label for="firstName">Prénom:</label>
+			<input class="form-control"
+			type="text" 
+			id="firstName"
+			formControlName="firstName">
+		</div>
+
+		<div class="form-group">
+			<label for="lastName">Nom:</label>
+			<input class="form-control"
+			type="text"
+			id="lasttName"
+			formControlName="lastName">
+		</div>
+
+		<div class="form-group">
+			<label for="email">Email:</label>
+			<input class="form-control"
+			type="email"
+			id="email"
+			formControlName="email">
+		</div>	
+
+		<div class="form-group">
+			<label for="drinkPreference">My Drink:</label>
+			<select class="form-control"
+			type="text"
+			id="drinkPreference"
+			formControlName="drinkPreference">
+				<option value="Coca">Coca</option>
+				<option value="Pepsi">Pepsi</option>
+				<option value="Fanta">Fanta</option>
+				<option value="Orangina">Orangina</option>
+			</select>
+		</div>	
+
+
+<!-- Hobbies optionnel array  -->
+		<div formArrayName="hobbies">
+			<h3>Vos hobbies</h3>
+
+			<div class="form-group" *ngFor="let hobbyControl of getHobbies().controls; 
+					let i = index">
+
+					<input type="text" class="form-control"
+					[formControlName]="i">
+			</div>
+
+			<button type="button" class="btn btn-success" (click)="onAddHobby()">
+				Ajouter un hobby</button>
+		</div>
+
+
+
+<!-- SUBMIT -->
+		<button class="btn btn-secondary btn-lg btn-block mt-3 mb-5"
+						type="submit"
+						[disabled]="userForm.invalid">
+			Soumettre</button>		
+
+
+	</form>
+
+
+
+</div>

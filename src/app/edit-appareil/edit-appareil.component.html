@@ -1,0 +1,57 @@
+<div class="container">
+	<h3>Editer les Appareils</h3>
+	<div class="row text-center mt-2">
+
+
+			<div class=" col-sm-8 m-auto">
+<!-- FORM -->
+				<form (ngSubmit)="onSubmit(f)" #f="ngForm">
+
+<!-- TEXT -->
+					<div class="form-group">
+					
+						<label for="name" class="">
+							Nom de l'appareil</label>
+						
+						<input type="text" name="name" id="name" class="form-control" ngModel required>
+						
+					</div>
+
+<!-- SELECT -->
+					<div class="form-group">
+						
+						<label for="status" class="">
+							Etat de l'appareil
+						</label>
+						
+						<select id="status" name="status" class="form-control" [ngModel]="defaultOnOff">
+
+							<option value="Allumé!">Allumé</option>
+							<option value="Eteint!">Éteint</option>
+
+						</select>
+
+					</div>
+
+<!-- BUTTON -->
+					<button 
+					type="submit" 
+					class="btn btn-primary btn-block mb-5"
+					[disabled]="f.invalid">
+					
+						Enregistrer
+					</button>
+
+				</form>
+
+			</div>
+
+
+		</div>
+</div>
+
+
+
+
+
+

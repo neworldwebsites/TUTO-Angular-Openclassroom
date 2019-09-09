@@ -1,0 +1,45 @@
+<div class="col-lg-12 col-xs-12 appList">
+
+<!-- Authentification -->
+  <app-auth></app-auth>
+
+
+  <h2>Les appareils</h2>
+
+  <p>Mise à jour : {{ lastUpdate | async | date: '  d/MM/y' | uppercase }}</p>
+  <!--  EEEE d MMMM m y (E:jour)short [ : format [ : timezone [ : locale ] ] ] -->
+
+
+  <ul class="list-group mb-5">
+
+    <app-appareil
+    *ngFor="let appareil of appareils; let i = index" 
+    [index]="i"
+    [appareilName]="appareil.name"
+    [appareilStatus]="appareil.status"
+    [id]="appareil.id"></app-appareil>
+
+  </ul>
+
+
+  <button class="btn btn-outline-success btn-block mt-5"
+  [disabled]="!isAuth" 
+  (click)="onAllumer()">
+  Tout Allumer</button>
+
+  <button class="btn btn-outline-danger btn-block"
+  (click)="onEteindre()" >
+  Tout Eteindre</button>
+
+
+  <!-- BUTTON HTTP -->
+  <button class="btn btn-secondary btn-block mt-5"
+  (click)="onSave()">
+  Enregistrer</button>
+
+  <button class="btn btn-secondary btn-block mb-5" 
+  (click)="onFetch()">
+  Récupérer</button>
+
+</div>
+
