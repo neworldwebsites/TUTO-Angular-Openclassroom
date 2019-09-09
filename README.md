@@ -1,15 +1,5 @@
 # Angular
 
-## EXERCICE
-
-    post: {
-      title: string,
-      content: string,
-      loveIts: number,
-      created_at: Date
-    } 
-_____________
-
 ## Installation
 
     npm install -g @angular/cli
