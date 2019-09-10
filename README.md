@@ -20,7 +20,7 @@ _____________
     npm install bootstrap --save
 
     npm install jquery --save
-    npm install popper --save   
+    npm install popper.js --save   
 
     npm install rxjs-compat --save
 
