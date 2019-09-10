@@ -19,16 +19,51 @@ _____________
 
     npm install bootstrap --save
 
+    npm install jquery --save
+    npm install popper --save   
+
     npm install rxjs-compat --save
 
 >in angular.json > architect > style ADD:
 ````ts
-           ],
-            "styles": [
-              "./node_modules/bootstrap/dist/css/bootstrap.css"
-            ],
+
+    "styles": [
+      "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+      "src/styles.scss"
+    ],
+
+    "scripts": [
+      "./node_modules/jquery/dist/jquery.min.js",
+      "./node_modules/popper.js/dist/umd/popper.min.js",  
+      "./node_modules/bootstrap/dist/js/bootstrap.min.js"
+    ]
+
+// OR on style.scss :
+@import "~bootstrap/dist/css/bootstrap.css";
 ````
 
+> Dans app.component.ts
+````ts
+import { Component, AfterViewInit } from '@angular/core';
+
+
+declare var $: any;
+
+
+export class AppComponent implements  AfterViewInit {
+
+  ngAfterViewInit() {
+    // JQUERY
+    $(() => {
+      $('h2')
+      .append($('<span>')
+      .css({ color: 'rebeccapurple' })
+      .text(' | all OK !'));
+    });
+  }
+
+}
+````
 _____________
 
 ## Imports
