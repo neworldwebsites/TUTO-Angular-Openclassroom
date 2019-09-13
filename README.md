@@ -4,12 +4,15 @@
 
     npm install -g @angular/cli
 
-    (--skip-tests=true)
-    ng new projectName --style=scss --directory .
+    ng new projectName --style=scss --directory . 
+    (--skip-tests=true)    
+
+    find . -type f -name '*.spec.ts' -delete
+    ng g ngx-spec:specs '**/*'
 
     ng serve
-
     ng serve --open
+    ng s -o
 
 * chrome extensions debugg: augury
 
@@ -17,29 +20,36 @@ _____________
 
 ## Extensions
 
-    npm install bootstrap --save
-
     npm install jquery --save
-    npm install popper.js --save   
+    npm install popper.js --save
+    npm install bootstrap --save
+    npm i font-awesome --save
 
+    npm install bootstrap@4 jquery --save
+    npm install popper.js --save  
+  
     npm install rxjs-compat --save
 
 >in angular.json > architect > style ADD:
 ````ts
 
     "styles": [
-      "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+      "../node_modules/bootstrap/dist/css/bootstrap.min.css",
       "src/styles.scss"
     ],
 
     "scripts": [
-      "./node_modules/jquery/dist/jquery.min.js",
-      "./node_modules/popper.js/dist/umd/popper.min.js",  
-      "./node_modules/bootstrap/dist/js/bootstrap.min.js"
+      "../node_modules/jquery/dist/jquery.min.js",
+      "../node_modules/popper.js/dist/umd/popper.min.js",  
+      "../node_modules/bootstrap/dist/js/bootstrap.min.js"
     ]
 
 // OR on style.scss :
 @import "~bootstrap/dist/css/bootstrap.css";
+````
+
+````html
+<script src="https://use.fontawesome.com/a0a577a7a2.js"></script>
 ````
 
 > Dans app.component.ts
@@ -64,6 +74,7 @@ export class AppComponent implements  AfterViewInit {
 
 }
 ````
+
 _____________
 
 ## Imports
@@ -1599,20 +1610,6 @@ Analysez cette méthode :
 
 **Prenez le temps de réfléchir à la construction de l'application.  Quels seront les components dont vous aurez besoin ?  Les services ?  Les modèles de données ?**
 
-> ng g c new-user
-
-> ng g c auth
-
-> services/books.service.ts
-
-> ng g c book
-
-> ng g c book-list
-
-> ng g c nav
-
-> models/Book.ts
-
 Il faudra également ajouter du routing à cette application, permettant l'accès aux différentes parties, avec une guard pour toutes les routes sauf l'authentification, empêchant les utilisateurs non authentifiés d'accéder à la bibliothèque.
 
 ### Structurez l'application:
@@ -1631,7 +1628,881 @@ ng g s services/books
 ng g s services/auth-guard
 ````
 
-**pour la suite voir directement l'app README**
+> Dans app.module.ts importer modules:
+````ts
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Routes } from '@angular/router';
+import { RouterModule } from '@angular/router';
+import { HttpClientModule } from '@angular/common/http';
+
+const appRoutes: Routes = [
+  { path: 'auth/signup', component: SignupComponent },
+  { path: 'auth/signin', component: SigninComponent },
+  { path: 'books', component: BookListComponent },
+  { path: 'books/new', component: BookFormComponent },
+  { path: 'books/view/:id', component: SingleBookComponent }
+];
+
+imports: [
+    BrowserModule,
+    FormsModule,ReactiveFormsModule,
+    HttpClientModule,
+    RouterModule.forRoot(appRoutes)
+],
+providers: [
+  AuthService, BooksService, AuthGuardService],
+````
+
+> Dans models/book.model.ts:
+````ts
+export class Book {
+  photo: string;
+  synopsis: string;
+  constructor(public title: string, public author: string) {
+  }
+}
+````
+
+> Sans HeaderComponent la navbar:
+````html
+<nav class="navbar navbar-expand-sm navbar-light  mb-2 bg-light justify-content-center">
+  <div class="container-fluid">
+    <ul class="nav navbar-nav">
+      <li routerLinkActive="active">
+        <a routerLink="books">Livres</a>
+      </li>
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li routerLinkActive="active">
+        <a routerLink="auth/signup">Créer un compte</a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="auth/signin">Connexion</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+````
+
+> Dans AppComponent:
+````html
+<app-header></app-header>
+<div class="container">
+  <router-outlet></router-outlet>
+</div>
+````
+
+### Intégrez Firebase à votre application
+
+D'abord, installez Firebase avec NPM :
+````bash
+npm install firebase --save
+````
+
+Choisissez "Ajouter Firebase à votre application Web" et copiez-collez la configuration dans le constructeur de votre  AppComponent  (en ajoutant  import * as firebase from 'firebase';  en haut du fichier, mettant à disposition la méthode  initializeApp() ) :
+
+````ts
+import { Component } from '@angular/core';
+
+import * as firebase from 'firebase';
+
+export class AppComponent {
+
+  constructor() {
+  // Your web app's Firebase configuration
+    const firebaseConfig = {
+    apiKey: "AIzaSyCUK66JbpU71b7trxWJNv8c6q3Es7CH_iA",
+    authDomain: "openclass-exo-book.firebaseapp.com",
+    databaseURL: "https://openclass-exo-book.firebaseio.com",
+    projectId: "openclass-exo-book",
+    storageBucket: "openclass-exo-book-34.appspot.com",
+    messagingSenderId: "1051558273662",
+    appId: "1:1051558273662:web:136229eaa3522b449e6e2f"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+
+}
+````
+
+### Authentification
+
+L'authentification Firebase emploie un système de token : un jeton d'authentification est stocké dans le navigateur, et est envoyé avec chaque requête nécessitant l'authentification.
+
+**Dans Firebase "Configurer un mode de connexion (authentification)**
+
+> Dans  AuthService , vous allez créer trois méthodes :
+
+* une méthode permettant de créer un nouvel utilisateur ;
+
+* une méthode permettant de connecter un utilisateur existant ;
+
+* une méthode permettant la déconnexion de l'utilisateur.
+
+*Puisque les opérations de création, de connexion et de déconnexion sont asynchrones, c'est-à-dire qu'elles n'ont pas un résultat instantané, les méthodes que vous allez créer pour les gérer retourneront des PROMISE, ce qui permettra également de gérer les situations d'erreur.*
+
+> Importez Firebase dans  AuthService  :
+
+````ts
+import { Injectable } from '@angular/core';
+
+import * as firebase from 'firebase';
+
+@Injectable()
+export class AuthService {
+
+// Pour créer un nouvel utilisateur, qui prendra comme argument une adresse mail et un mot de passe, et qui retournera une Promise qui résoudra si la création réussit, et sera rejetée avec le message d'erreur si elle ne réussit pas :
+  createNewUser(email: string, password: string) {
+    return new Promise(
+      (resolve, reject) => {
+        firebase.auth().createUserWithEmailAndPassword(email, password).then(
+          () => {
+            resolve();
+          },
+          (error) => {
+            reject(error);
+          }
+        );
+      }
+    );
+}// Toutes les méthodes liées à l'authentification Firebase se trouvent dans  firebase.auth().
+
+
+// Créez également  signInUser() , méthode très similaire, qui s'occupera de connecter un utilisateur déjà existant :
+signInUser(email: string, password: string) {
+    return new Promise(
+      (resolve, reject) => {
+        firebase.auth().signInWithEmailAndPassword(email, password).then(
+          () => {
+            resolve();
+          },
+          (error) => {
+            reject(error);
+          }
+        );
+      }
+    );
+}
+
+
+// Créez une méthode simple  signOutUser()  :
+signOutUser() {
+    firebase.auth().signOut();
+}
+````
+*Ainsi, vous avez les trois fonctions dont vous avez besoin pour intégrer l'authentification dans l'application !*
+
+Vous pouvez ainsi créer  SignupComponent  et  SigninComponent , intégrer l'authentification dans  HeaderComponent  afin de montrer les bons liens, et implémenter  AuthGuard  pour protéger la route  /books  et toutes ses sous-routes.
+
+> 1-  SIGNUP.Component.TS  afin de pouvoir enregistrer un utilisateur :
+````ts
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
+
+
+export class SignupComponent implements OnInit {
+
+  signupForm: FormGroup;
+  errorMessage: string;
+
+  constructor(private formBuilder: FormBuilder,
+              private authService: AuthService,
+              private router: Router) { }
+
+  ngOnInit() {
+    this.initForm();
+  }
+
+  initForm() {
+    this.signupForm = this.formBuilder.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.pattern(/[0-9a-zA-Z]{6,}/)]]
+    });
+  }
+
+  onSubmit() {
+    const email = this.signupForm.get('email').value;
+    const password = this.signupForm.get('password').value;
+    
+    this.authService.createNewUser(email, password).then(
+      () => {
+        this.router.navigate(['/books']);
+      },
+      (error) => {
+        this.errorMessage = error;
+      }
+    );
+  }
+}
+````
+Dans ce component :
+
+* vous générez le formulaire selon la méthode réactive
+
+  * les deux champs,  email  et  password , sont requis — le champ  email  utilise  Validators.email  pour obliger un string sous format d'adresse email ; le champ  password  emploie  Validators.pattern  pour obliger au moins 6 caractères alphanumériques, ce qui correspond au minimum requis par Firebase ;
+
+* vous gérez la soumission du formulaire, envoyant les valeurs rentrées par l'utilisateur à la méthode  createNewUser()
+
+  * si la création fonctionne, vous redirigez l'utilisateur vers  /books ;
+
+  * si elle ne fonctionne pas, vous affichez le message d'erreur renvoyé par Firebase.
+
+> Dans SIGNUPComponent.HTML , vous trouverez le template correspondant :
+````html
+<div class="row">
+  <div class="col-sm-8 col-sm-offset-2">
+    <h2>Créer un compte</h2>
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="email">Adresse mail</label>
+        <input type="text"
+               id="email"
+               class="form-control"
+               formControlName="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password"
+               id="password"
+               class="form-control"
+               formControlName="password">
+      </div>
+      <button class="btn btn-primary"
+              type="submit"
+              [disabled]="signupForm.invalid">
+              Créer mon compte</button>
+    </form>
+    <p class="text-danger">{{ errorMessage }}</p>
+  </div>
+</div>
+````
+
+> 2-  SIGNIN.Component.TS & HTML pour la connexion d'un utilisateur déjà existant:
+
+*Vous pouvez créer un template presque identique pour  SIGNINComponent  pour la connexion d'un utilisateur déjà existant.  Il vous suffit de renommer  signupForm  en  signinForm  et d'appeler la méthode  signInUser()  plutôt que  createNewUser() .*
+
+
+> Modifier  HEADERComponent  pour afficher de manière contextuelle les liens de connexion, de création d'utilisateur et de déconnexion :
+````ts
+import { Component, OnInit } from '@angular/core';
+import { AuthService } from '../services/auth.service';
+import * as firebase from 'firebase';
+
+
+export class HeaderComponent implements OnInit {
+
+  isAuth: boolean;
+
+  constructor(private authService: AuthService) { }
+
+  ngOnInit() {
+    firebase.auth().onAuthStateChanged(
+      (user) => {
+        if(user) {
+          this.isAuth = true;
+        } else {
+          this.isAuth = false;
+        }
+      }
+    );
+  }
+
+  onSignOut() {
+    this.authService.signOutUser();
+  }
+
+}
+// Ici, vous utilisez  onAuthStateChanged() , qui permet d'observer l'état de l'authentification de l'utilisateur : à chaque changement d'état, la fonction que vous passez en argument est exécutée.  Si l'utilisateur est bien authentifié,  onAuthStateChanged()  reçoit l'objet de type  firebase.User  correspondant à l'utilisateur.  Vous pouvez ainsi baser la valeur de la variable locale  isAuth  selon l'état d'authentification de l'utilisateur, et afficher les liens correspondant à cet état.
+````
+
+> Dans HEADER.comonent.HTML:
+````html
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <ul class="nav navbar-nav">
+      <li routerLinkActive="active">
+        <a routerLink="books">Livres</a>
+      </li>
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li routerLinkActive="active" *ngIf="!isAuth">
+        <a routerLink="auth/signup">Créer un compte</a>
+      </li>
+      <li routerLinkActive="active" *ngIf="!isAuth">
+        <a routerLink="auth/signin">Connexion</a>
+      </li>
+      <li>
+        <a (click)="onSignOut()"
+           style="cursor:pointer"
+           *ngIf="isAuth">Déconnexion</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+````
+
+> Il ne vous reste plus qu'à créer  AHTHGUARD.Service  .Puisque la vérification de l'authentification est asynchrone, votre service retournera une Promise :
+````ts
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { Observable } from 'rxjs/Observable';
+import * as firebase from 'firebase';
+
+@Injectable()
+export class AuthGuardService implements CanActivate {
+
+  constructor(private router: Router) { }
+
+  canActivate(): Observable<boolean> | Promise<boolean> | boolean {
+    return new Promise(
+      (resolve, reject) => {
+        firebase.auth().onAuthStateChanged(
+          (user) => {
+            if(user) {
+              resolve(true);
+            } else {
+              this.router.navigate(['/auth', 'signin']);
+              resolve(false);
+            }
+          }
+        );
+      }
+    );
+  }
+}
+````
+
+> Dans APP.module.ts l'appliquer aux routes concernées PATH
+````ts
+const appRoutes: Routes = [
+  { path: 'auth/signup', component: SignupComponent },
+  { path: 'auth/signin', component: SigninComponent },
+  { path: 'books', canActivate: [AuthGuardService], component: BookListComponent },
+  { path: 'books/new', canActivate: [AuthGuardService], component: BookFormComponent },
+  { path: 'books/view/:id', canActivate: [AuthGuardService], component: SingleBookComponent },
+  { path: '', redirectTo: 'books', pathMatch: 'full' },
+  { path: '**', redirectTo: 'books' }
+];
+
+// Ah, mais qu'a-t-on oublié ?  Le routing ne prend en compte ni le path vide, ni le path wildcard !  Ajoutez ces routes dès maintenant pour éviter toute erreur :
+````
+
+### Base de données
+
+Dans ce chapitre, vous allez créer les fonctionnalités de l'application : la création, la visualisation et la suppression des livres, le tout lié directement à la base de données Firebase.
+
+Pour créer  BooksService  :
+
+* vous aurez un array local  books  et un Subject pour l'émettre ;
+
+* vous aurez des méthodes :
+
+  * pour enregistrer la liste des livres sur le serveur,
+
+  * pour récupérer la liste des livres depuis le serveur,
+
+  * pour récupérer un seul livre,
+
+  * pour créer un nouveau livre,
+
+  * pour supprimer un livre existant.
+
+> Dans BOOKS.Service.TS (sans oublier d'importer Book et Subject) :
+````ts
+import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs/Subject';
+import { Book } from '../models/book.model';
+
+@Injectable()
+export class BooksService {
+
+  books: Book[] = [];
+  booksSubject = new Subject<Book[]>();
+
+  constructor() {
+    this.getBooks(); //  au démarrage de l'application
+  }
+
+  emitBooks() {
+    this.booksSubject.next(this.books);
+  }
+
+// méthode mise à disposition par Firebase pour enregistrer la liste sur un node de la base de données — la méthode  set()  :
+  saveBooks() {
+      firebase.database().ref('/books').set(this.books);
+  }
+// La méthode  ref()  retourne une référence au node demandé de la base de données, et  set()  fonctionne plus ou moins comme  put()  pour le HTTP : il écrit et remplace les données au node donné.
+
+
+// méthodes pour récupérer la liste entière des livres et pour récupérer un seul livre, en employant les deux fonctions proposées par Firebase :
+getBooks() {
+    firebase.database().ref('/books')
+      .on('value', (data: DataSnapshot) => {
+          this.books = data.val() ? data.val() : [];
+          this.emitBooks();
+        }
+      );
+  }
+  // Pour  getBooks() , vous utilisez la méthode  on() .  Le premier argument  'value'  demande à Firebase d'exécuter le callback à chaque modification de valeur enregistrée au endpoint choisi : cela veut dire que si vous modifiez quelque chose depuis un appareil, la liste sera automatiquement mise à jour sur tous les appareils connectés.  
+
+  // Le deuxième argument est la fonction callback, qui reçoit ici une  DataSnapshot  : un objet correspondant au node demandé, comportant plusieurs membres et méthodes (il faut importer  DataSnapshot  depuis  firebase.database.DataSnapshot ).  La méthode qui vous intéresse ici est  val() , qui retourne la valeur des données, tout simplement.  Votre callback prend également en compte le cas où le serveur ne retourne rien pour éviter les bugs potentiels.
+
+  getSingleBook(id: number) {
+    return new Promise(
+      (resolve, reject) => {
+        firebase.database().ref('/books/' + id).once('value').then(
+          (data: DataSnapshot) => {
+            resolve(data.val());
+          }, (error) => {
+            reject(error);
+          }
+        );
+      }
+    );
+  }
+  // La fonction  getSingleBook()  récupère un livre selon son id, qui est simplement ici son index dans l'array enregistré.  Vous utilisez  once() , qui ne fait qu'une seule requête de données.  Du coup, elle ne prend pas une fonction callback en argument mais retourne une Promise, permettant l'utilisation de  .then()  pour retourner les données reçues.
+
+
+//  il ne reste plus qu'à créer les méthodes pour la création d'un nouveau livre et la suppression d'un livre existant :
+  createNewBook(newBook: Book) {
+      this.books.push(newBook);
+      this.saveBooks();
+      this.emitBooks();
+    }
+
+    removeBook(book: Book) {
+      const bookIndexToRemove = this.books.findIndex(
+        (bookEl) => {
+          if(bookEl === book) {
+            return true;
+          }
+        }
+      );
+      this.books.splice(bookIndexToRemove, 1);
+      this.saveBooks();
+      this.emitBooks();
+    }
+
+
+// méthode qui permet d'uploader une photo :
+    uploadFile(file: File) {
+        return new Promise(
+          (resolve, reject) => {
+            const almostUniqueFileName = Date.now().toString();
+            const upload = firebase.storage().ref()
+              .child('images/' + almostUniqueFileName + file.name).put(file);
+            upload.on(firebase.storage.TaskEvent.STATE_CHANGED,
+              () => {
+                console.log('Chargement…');
+              },
+              (error) => {
+                console.log('Erreur de chargement ! : ' + error);
+                reject();
+              },
+              () => {
+                resolve(upload.snapshot.ref.getDownloadURL());
+              }
+            );
+          }
+        );
+    }
+
+
+}
+````
+
+> Ensuite, vous allez créer  BOOKLISTComponent.TS , qui :
+
+* souscrit au Subject du service et déclenche sa première émission ;
+
+* affiche la liste des livres, où chaque livre peut être cliqué pour en voir la page  SingleBookComponent ;
+
+* permet de supprimer chaque livre en utilisant  removeBook() ;
+
+* permet de naviguer vers  BookFormComponent  pour la création d'un nouveau livre.  
+
+````ts
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { BooksService } from '../services/books.service';
+import { Book } from '../models/book.model';
+import { Subscription } from 'rxjs/Subscription';
+import { Router } from '@angular/router';
+
+
+export class BookListComponent implements OnInit, OnDestroy {
+
+  books: Book[];
+  booksSubscription: Subscription;
+
+  constructor(private booksService: BooksService, private router: Router) {}
+
+  ngOnInit() {
+    this.booksSubscription = this.booksService.booksSubject.subscribe(
+      (books: Book[]) => {
+        this.books = books;
+      }
+    );
+    this.booksService.emitBooks();
+  }
+
+  onNewBook() {
+    this.router.navigate(['/books', 'new']);
+  }
+
+  onDeleteBook(book: Book) {
+    this.booksService.removeBook(book);
+  }
+
+  onViewBook(id: number) {
+    this.router.navigate(['/books', 'view', id]);
+  }
+  
+  ngOnDestroy() {
+    this.booksSubscription.unsubscribe();
+  }
+}
+````
+
+> Dans BOOKLIST.component.HTML:
+````html
+<div class="row">
+  <div class="col-xs-12">
+
+    <h2>Vos livres</h2>
+
+    <div class="list-group">
+
+      <button
+        class="list-group-item"
+        *ngFor="let book of books; let i = index"
+        (click)="onViewBook(i)">
+
+        <h3 class="list-group-item-heading">
+          {{ book.title }}
+          <button class="btn btn-default pull-right" (click)="onDeleteBook(book)">
+            <span class="glyphicon glyphicon-minus"></span>
+          </button>
+        </h3>
+
+        <p class="list-group-item-text">{{ book.author }}</p>
+      </button>
+
+    </div>
+
+    <button class="btn btn-primary"
+    (click)="onNewBook()">
+      Nouveau livre</button>
+
+  </div>
+</div>
+````
+
+> **Il n'y a rien de nouveau ici, donc passez rapidement à  SINGLEBOOKComponent.TS  :**
+````ts
+import { Component, OnInit } from '@angular/core';
+import { Book } from '../../models/book.model';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BooksService } from '../../services/books.service';
+
+
+export class SingleBookComponent implements OnInit {
+
+  book: Book;
+
+  constructor(private route: ActivatedRoute, private booksService: BooksService,
+              private router: Router) {}
+
+  ngOnInit() {
+    this.book = new Book('', '');
+    const id = this.route.snapshot.params['id'];
+    this.booksService.getSingleBook(+id).then(
+      (book: Book) => {
+        this.book = book;
+      }
+    );
+  }
+
+  onBack() {
+    this.router.navigate(['/books']);
+  }
+}
+````
+
+> Le component récupère le livre demandé par son id grâce à  getSingleBook() , et l'affiche dans le template suivant :
+````html
+<div class="row">
+  <div class="col-xs-12">
+    <h1>{{ book.title }}</h1>
+    <h3>{{ book.author }}</h3>
+    <p>{{ book.synopsis }}</p>
+    <button class="btn btn-default" (click)="onBack()">Retour</button>
+  </div>
+</div>
+````
+
+> **Il ne reste plus qu'à créer  BOOKFORM.component , qui comprend un formulaire selon la méthode réactive et qui enregistre les données reçues grâce à  createNewBook()  :**
+````ts
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Book } from '../../models/book.model';
+import { BooksService } from '../../services/books.service';
+import { Router } from '@angular/router';
+
+
+export class BookFormComponent implements OnInit {
+
+  bookForm: FormGroup;
+
+  constructor(private formBuilder: FormBuilder, private booksService: BooksService,
+              private router: Router) { }
+              
+  ngOnInit() {
+    this.initForm();
+  }
+  
+  initForm() {
+    this.bookForm = this.formBuilder.group({
+      title: ['', Validators.required],
+      author: ['', Validators.required],
+      synopsis: ''
+    });
+  }
+  
+  onSaveBook() {
+    const title = this.bookForm.get('title').value;
+    const author = this.bookForm.get('author').value;
+    const synopsis = this.bookForm.get('synopsis').value;
+    const newBook = new Book(title, author);
+    newBook.synopsis = synopsis;
+    this.booksService.createNewBook(newBook);
+    this.router.navigate(['/books']);
+  }
+}
+````
+
+> Dans BOOKFORM.component.HTML:
+````html
+<div class="row">
+  <div class="col-sm-8 col-sm-offset-2">
+    <h2>Enregistrer un nouveau livre</h2>
+    <form [formGroup]="bookForm"
+    (ngSubmit)="onSaveBook()">
+
+      <div class="form-group">
+        <label for="title">Titre</label>
+        <input type="text" id="title" class="form-control"
+        formControlName="title">
+      </div>
+
+      <div class="form-group">
+        <label for="author">Auteur</label>
+        <input type="text" id="author" class="form-control"
+        formControlName="author">
+      </div>
+
+      <div class="form-group">
+        <label for="synopsis">Synopsis</label>
+        <textarea id="synopsis" class="form-control"
+        formControlName="synopsis">
+        </textarea>
+      </div>
+
+      <button class="btn btn-success" 
+      [disabled]="bookForm.invalid" type="submit">
+      Enregistrer</button>
+
+    </form>
+  </div>
+</div>
+````
+
+### Storage
+
+Dans ce dernier chapitre, vous allez apprendre à utiliser l'API Firebase Storage afin de permettre à l'utilisateur d'ajouter une photo du livre, de l'afficher dans  SingleBookComponent  et de la supprimer si on supprime le livre, afin de ne pas laisser des photos inutilisées sur le serveur.
+
+> Tout d'abord, vous allez ajouter une méthode dans  BOOK.service  qui permet d'uploader une photo :
+````ts
+uploadFile(file: File) {
+    return new Promise(
+      (resolve, reject) => {
+        const almostUniqueFileName = Date.now().toString();
+        const upload = firebase.storage().ref()
+          .child('images/' + almostUniqueFileName + file.name).put(file);
+        upload.on(firebase.storage.TaskEvent.STATE_CHANGED,
+          () => {
+            console.log('Chargement…');
+          },
+          (error) => {
+            console.log('Erreur de chargement ! : ' + error);
+            reject();
+          },
+          () => {
+            resolve(upload.snapshot.ref.getDownloadURL());
+          }
+        );
+      }
+    );
+}
+````
+
+Analysez cette méthode :
+
+* l'action de télécharger un fichier prend du temps, donc vous créez une méthode asynchrone qui retourne une Promise ;
+
+* la méthode prend comme argument un fichier de type File ;
+
+* afin de créer un nom unique pour le fichier (évitant ainsi d'écraser un fichier qui porterait le même nom que celui que l'utilisateur essaye de charger), vous créez un string à partir de  Date.now() , qui donne le nombre de millisecondes passées depuis le 1er janvier 1970 ;
+
+* vous créez ensuite une tâche de chargement  upload  :
+
+  * firebase.storage().ref()  vous retourne une référence à la racine de votre bucket Firebase,
+
+  * la méthode  child()  retourne une référence au sous-dossier  images  et à un nouveau fichier dont le nom est l'identifiant unique + le nom original du fichier (permettant de garder le format d'origine également),
+
+* vous utilisez ensuite la méthode  on()  de la tâche  upload  pour en suivre l'état, en y passant trois fonctions :
+
+  * la première est déclenchée à chaque fois que des données sont envoyées vers le serveur,
+
+  * la deuxième est déclenchée si le serveur renvoie une erreur,
+
+  * la troisième est déclenchée lorsque le chargement est terminé et permet de retourner l'URL unique du fichier chargé.
+
+**Pour des applications à très grande échelle, la méthode  Date.now()  ne garantit pas à 100% un nom de fichier unique, mais pour une application de cette échelle, cette méthode suffit largement.**
+
+> Maintenant que le service est prêt, vous allez ajouter les fonctionnalités nécessaires à  BOOKFORM.component .
+````ts
+// Commencez par ajouter quelques membres supplémentaires au component :
+bookForm: FormGroup;
+fileIsUploading = false;
+fileUrl: string;
+fileUploaded = false;
+
+// Ensuite, créez la méthode qui déclenchera  uploadFile()  et qui en récupérera l'URL retourné :
+onUploadFile(file: File) {
+    this.fileIsUploading = true;
+    this.booksService.uploadFile(file).then(
+      (url: string) => {
+        this.fileUrl = url;
+        this.fileIsUploading = false;
+        this.fileUploaded = true;
+      }
+    );
+}
+// Vous utiliserez  fileIsUploading  pour désactiver le bouton  submit  du template pendant le chargement du fichier afin d'éviter toute erreur — une fois l'upload terminé, le component enregistre l'URL retournée dans  fileUrl  et modifie l'état du component pour dire que le chargement est terminé.
+
+
+// Il faut modifier légèrement  onSaveBook()  pour prendre en compte l'URL de la photo si elle existe :
+onSaveBook() {
+    const title = this.bookForm.get('title').value;
+    const author = this.bookForm.get('author').value;
+    const synopsis = this.bookForm.get('synopsis').value;
+    const newBook = new Book(title, author);
+    newBook.synopsis = synopsis;
+    if(this.fileUrl && this.fileUrl !== '') {
+      newBook.photo = this.fileUrl;
+    }
+    this.booksService.createNewBook(newBook);
+    this.router.navigate(['/books']);
+}
+
+// Vous allez créer une méthode qui permettra de lier le  <input type="file">  (que vous créerez par la suite) à la méthode  onUploadFile()  :
+detectFiles(event) {
+    this.onUploadFile(event.target.files[0]);
+}
+
+// Il faut également prendre en compte que si un livre est supprimé, il faut également en supprimer la photo.  La nouvelle méthode  removeBook()  est la suivante :
+removeBook(book: Book) {
+    if(book.photo) {
+      const storageRef = firebase.storage().refFromURL(book.photo);
+      storageRef.delete().then(
+        () => {
+          console.log('Photo removed!');
+        },
+        (error) => {
+          console.log('Could not remove photo! : ' + error);
+        }
+      );
+    }
+    const bookIndexToRemove = this.books.findIndex(
+      (bookEl) => {
+        if(bookEl === book) {
+          return true;
+        }
+      }
+    );
+    this.books.splice(bookIndexToRemove, 1);
+    this.saveBooks();
+    this.emitBooks();
+}
+````
+
+> Dans BOOKFORM.component.HTML L'événement est envoyé à cette méthode depuis cette nouvelle section du template :
+````html
+<div class="form-group">
+    <h4>Ajouter une photo</h4>
+    <input type="file" (change)="detectFiles($event)"
+           class="form-control" accept="image/*">
+    <p class="text-success" *ngIf="fileUploaded">Fichier chargé !</p>
+</div>
+<button class="btn btn-success" [disabled]="bookForm.invalid || fileIsUploading"
+      type="submit">Enregistrer
+</button>
+<!-- Dès que l'utilisateur choisit un fichier, l'événement est déclenché et le fichier est uploadé.  Le texte "Fichier chargé !" est affiché lorsque  fileUploaded  est  true , et le bouton est désactivé quand le formulaire n'est pas valable ou quand  fileIsUploading  est  true . -->
+````
+
+> Il ne reste plus qu'à afficher l'image, si elle existe, dans  SINGLEBOOK.Component  :
+````html
+<div class="row">
+  <div class="col-xs-12">
+    <img style="max-width:400px;" *ngIf="book.photo" [src]="book.photo">
+    <h1>{{ book.title }}</h1>
+    <h3>{{ book.author }}</h3>
+    <p>{{ book.synopsis }}</p>
+    <button class="btn btn-default" (click)="onBack()">Retour</button>
+  </div>
+</div>
+````
+
+*Puisqu'il faut une référence pour supprimer un fichier avec la méthode  delete() , vous passez l'URL du fichier à  refFromUrl()  pour en récupérer la référence.*
+
+
+### Connection Firebase
+
+**Realtime Database>rules>read, write >true**
+
+````js
+{
+  /* Visit https://firebase.google.com/docs/database/security to learn more about security rules. */
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+````
+
+### Application prête à être distribuée:
+
+````bash
+ng build --prod
+````
+
+**Voici les nouvelles compétences Angular pour créer une application dynamique, comportant plusieurs components qui :**
+
+* affichent des données dans le template avec le data binding ;
+
+* sont construits de manière dynamique avec les directives ;
+
+* communiquent ensemble grâce aux services ;
+
+* sont accessibles par un routing personnalisé ;
+
+* emploient des Observables pour gérer des flux de données ;
+
+* utilisent des formulaires pour exploiter des données fournies par l'utilisateur ;
+
+* fonctionnent avec un backend Firebase pour la gestion de l'authentification, des données et des fichiers.
 
 _____________
 ## Code scaffolding ( échaffaudage )
