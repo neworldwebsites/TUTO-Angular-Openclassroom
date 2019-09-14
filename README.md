@@ -112,6 +112,12 @@ _____________
 ## Services
 
     ng g s services/auth
+    
+_____________
+
+## Models
+
+  ng g class models/post --type=model    
 
 _____________
 
