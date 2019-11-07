@@ -20,13 +20,10 @@ _____________
 
 ## Extensions
 
-    npm install jquery --save
-    npm install popper.js --save
-    npm install bootstrap --save
-    npm i font-awesome --save
-
-    npm install bootstrap@4 jquery --save
+    npm install bootstrap@latest jquery --save
     npm install popper.js --save  
+    
+    npm i font-awesome --save
   
     npm install rxjs-compat --save
 
