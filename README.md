@@ -2,7 +2,7 @@
 
 ## Installation
 
-    npm install -g @angular/cli
+    npm install -g @angular/cli@latest
 
     ng new projectName --style=scss --directory . 
     (--skip-tests=true)    
